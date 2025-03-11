@@ -1,0 +1,73 @@
+---
+title: "Reef_Assignment"
+output: html_document
+date: "2025-03-11"
+author: "530618133"
+bibliography: citations.bib
+---
+
+# DATA3888 Assignment: Reef
+
+```{r}
+library(viridis)
+library(tidyverse)
+library(ncdf4)
+library(ggmap)
+
+register_google(key = "AIzaSyAnwb9-OeK8El-HX0ZP19N437-G6chspAU", write = TRUE)
+```
+
+```{r}
+bleachData <- read.csv("bleachingSurveys.csv")
+
+location <- "Australia"
+
+map <- get_googlemap(center = location, zoom = 4, maptype = "roadmap")
+```
+
+```{r}
+ggmap(map) +
+geom_point(data = bleachData, alpha = 0.2, aes(y=latitude, x= longitude, 
+  size=bleachCat, color=bleachCat)) + scale_colour_viridis(option = "C") + theme_minimal()
+```
+
+## Part One
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+countryData <- read.csv("Reef_Check_with_cortad_variables_with_annual_rate_of_SST_change.csv")
+
+colnames(countryData)
+countryDataYears <- filter(countryData, Year >= 2014 & Year < 2018)
+
+world_map <- map_data("world")
+ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), fill="grey", alpha=0.3)+
+geom_point(data = countryDataYears, alpha = 0.2, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+  size=Depth, color=Depth)) + scale_colour_viridis(option = "D") + theme_minimal()
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+eReefs_nc = ncdf4::nc_open(
+"https://thredds.ereefs.aims.gov.au/thredds/dodsC/
+GBR4_H2p0_B3p1_Cq3b_Dhnd/annual.nc?zc[1],
+latitude[0:1:722],longitude[0:1:490],
+temp[0:1:9][1][0:1:722][0:1:490],
+TOTAL_NITROGEN[0:1:9][1][0:1:722][0:1:490],
+MA_N[0:1:9][0:1:722][0:1:490],
+PH[0:1:9][1][0:1:722][0:1:490],
+salt[0:1:9][1][0:1:722][0:1:490],
+time[0:1:9]")
+
+# Access latitude and longitude
+latitude <- ncvar_get(eReefs_nc, "latitude")
+longitude <- ncvar_get(eReefs_nc, "longitude")
+
+# View the first few values of latitude and longitude
+head(latitude)
+head(longitude)
+```
