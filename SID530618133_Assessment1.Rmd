@@ -28,7 +28,7 @@ map <- get_googlemap(center = location, zoom = 4, maptype = "roadmap")
 ```{r}
 ggmap(map) +
 geom_point(data = bleachData, alpha = 0.2, aes(y=latitude, x= longitude, 
-  size=bleachCat, color=bleachCat)) + scale_colour_viridis(option = "C") + theme_minimal()
+  size=bleachCat, color=bleachCat)) + scale_colour_viridis(option = "C") + theme_minimal() + ggtitle("Bleaching severities across the East Coast of Australia")
 ```
 
 ## Part One
