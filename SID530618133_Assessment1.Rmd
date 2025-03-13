@@ -49,7 +49,18 @@ geom_point(data = countryDataYears, alpha = 0.2, aes(y=Latitude.Degrees, x= Long
   size=Depth, color=Depth)) + scale_colour_viridis(option = "D") + theme_minimal()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+countryData
+countryData$Diversity
+countryData2 <- subset(countryData, select = -c(S1,S2,S3,S4,Region,'What.Errors'))
+countryDataClean <- na.omit(countryData2)
+X
+countryDataClean$Diversity
+X <- countryDataClean %>% select(-Diversity)
+Y <- countryDataClean %>% select(Diversity)
+
+X_Scaled = scale(X)
+```
 
 ```{r}
 eReefs_nc = ncdf4::nc_open(
