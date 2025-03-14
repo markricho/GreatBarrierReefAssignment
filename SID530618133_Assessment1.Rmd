@@ -49,17 +49,24 @@ geom_point(data = countryDataYears, alpha = 0.2, aes(y=Latitude.Degrees, x= Long
   size=Depth, color=Depth)) + scale_colour_viridis(option = "D") + theme_minimal()
 ```
 
-```{r}
-countryData
-countryData$Diversity
-countryData2 <- subset(countryData, select = -c(S1,S2,S3,S4,Region,'What.Errors'))
-countryDataClean <- na.omit(countryData2)
-X
-countryDataClean$Diversity
-X <- countryDataClean %>% select(-Diversity)
-Y <- countryDataClean %>% select(Diversity)
+Clearly the Thermal Stress Anomaly which is the weekly surface temperature minus the maximum weekly climatologist sea surface temperature was significantly lower on average outside the Tropical Mid latitude than inside from 2014-2017. This is confusing though because you'd think it would be the other way round. I can use it as a template now though.
 
-X_Scaled = scale(X)
+```{r}
+tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "TSA_Mean")]
+tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, TSA_Mean)
+
+tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, 0, ifelse(abs(Latitude.Degrees)<15, 1, 2)))
+
+world_map <- map_data("world")
+ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), fill="grey", alpha=0.3)+
+geom_point(data = tsa_model, alpha = 0.2, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+  size=TSA_Mean>-1.6, color = in_zone)) + scale_colour_viridis(option = "C") + theme_minimal()
+```
+Checking Averages
+```{r}
+comparing_tsa <- tsa_model[, c("in_zone", "TSA_Mean")]
+comparing_tsa %>% group_by(in_zone) %>%
+  summarise(average_value = mean(TSA_Mean, na.rm=TRUE))
 ```
 
 ```{r}
