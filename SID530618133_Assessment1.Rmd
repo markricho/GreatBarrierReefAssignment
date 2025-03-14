@@ -8,7 +8,7 @@ bibliography: citations.bib
 
 # DATA3888 Assignment: Reef
 
-```{r}
+```{r, include=FALSE}
 library(viridis)
 library(tidyverse)
 library(ncdf4)
@@ -17,7 +17,7 @@ library(ggmap)
 register_google(key = "AIzaSyAnwb9-OeK8El-HX0ZP19N437-G6chspAU", write = TRUE)
 ```
 
-```{r}
+```{r include=FALSE}
 bleachData <- read.csv("bleachingSurveys.csv")
 
 location <- "Australia"
@@ -40,7 +40,6 @@ You can also embed plots, for example:
 ```{r}
 countryData <- read.csv("Reef_Check_with_cortad_variables_with_annual_rate_of_SST_change.csv")
 
-colnames(countryData)
 countryDataYears <- filter(countryData, Year >= 2014 & Year < 2018)
 
 world_map <- map_data("world")
@@ -49,27 +48,31 @@ geom_point(data = countryDataYears, alpha = 0.2, aes(y=Latitude.Degrees, x= Long
   size=Depth, color=Depth)) + scale_colour_viridis(option = "D") + theme_minimal()
 ```
 
-Clearly the Thermal Stress Anomaly which is the weekly surface temperature minus the maximum weekly climatologist sea surface temperature was significantly lower on average outside the Tropical Mid latitude than inside from 2014-2017. This is confusing though because you'd think it would be the other way round. I can use it as a template now though.
+Clearly the Temperature was higher on average outside the Tropical Mid latitude than inside from 2014-2017. This is confusing though because you'd think it would be the other way round. I can use it as a template now though.
 
 ```{r}
-tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "TSA_Mean")]
-tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, TSA_Mean)
+tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "Temperature_Mean")]
+tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, Temperature_Mean)
 
 tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, 0, ifelse(abs(Latitude.Degrees)<15, 1, 2)))
 
-world_map <- map_data("world")
-ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), fill="grey", alpha=0.3)+
-geom_point(data = tsa_model, alpha = 0.2, aes(y=Latitude.Degrees, x= Longitude.Degrees,
-  size=TSA_Mean>-1.6, color = in_zone)) + scale_colour_viridis(option = "C") + theme_minimal()
-```
-Checking Averages
-```{r}
-comparing_tsa <- tsa_model[, c("in_zone", "TSA_Mean")]
-comparing_tsa %>% group_by(in_zone) %>%
-  summarise(average_value = mean(TSA_Mean, na.rm=TRUE))
 ```
 
 ```{r}
+world_map <- map_data("world")
+ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), fill="grey", alpha=0.3)+
+geom_point(data = tsa_model, alpha = 0.2, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+  size=Temperature_Mean>301, color = in_zone)) + scale_colour_viridis_c() + theme_minimal()
+```
+Checking Averages
+
+```{r}
+comparing_tsa <- tsa_model[, c("in_zone", "Temperature_Mean")]
+comparing_tsa %>% group_by(in_zone) %>%
+  summarise(average_value = mean(Temperature_Mean, na.rm=TRUE))
+```
+
+```{r, include=FALSE}
 eReefs_nc = ncdf4::nc_open(
 "https://thredds.ereefs.aims.gov.au/thredds/dodsC/
 GBR4_H2p0_B3p1_Cq3b_Dhnd/annual.nc?zc[1],
