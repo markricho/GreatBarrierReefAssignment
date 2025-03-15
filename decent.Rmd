@@ -1,0 +1,52 @@
+---
+title: "ExtraHelp"
+output: html_document
+date: "2025-03-15"
+---
+
+
+```{r include=FALSE}
+
+bleachData <- read.csv("bleachingSurveys.csv")
+
+location <- "Australia"
+
+map <- get_googlemap(center = location, zoom = 4, maptype = "roadmap")
+```
+
+```{r}
+ggmap(map) +
+geom_point(data = bleachData, alpha = 0.2, aes(y=latitude, x= longitude, 
+  size=bleachCat, color=bleachCat)) + scale_colour_viridis(option = "C") + theme_minimal() + ggtitle("Bleaching severities across the East Coast of Australia")
+```
+
+may use 
+
+## Temperature Part
+```{r, echo=FALSE}
+tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "Temperature_Mean")]
+tsa_model <- tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, Temperature_Mean)
+
+tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
+
+```
+
+```{r, echo=FALSE}
+tsa_model$Above_301 <- tsa_model$Temperature_Mean > 301
+tsa_model$in_zone <- as.factor(tsa_model$in_zone)
+
+world_map <- map_data("world")
+ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), alpha=0.3)+
+geom_point(data = tsa_model, alpha = 0.4, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+  shape=Above_301, color = in_zone), size=4) + scale_colour_viridis_d(option = "D") + theme_minimal() +  theme(
+    panel.background = element_rect(color = "black"), plot.background = element_rect(fill = "lightblue4", color = NA)
+  ) + ggtitle("Map displaying Mean Temperature of Coral Reefs analysed from study") + labs(color = "In Midlatititude Zone", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
+```
+Checking Averages
+
+```{r, echo=FALSE}
+comparing_tsa <- tsa_model[, c("in_zone", "Temperature_Mean")]
+
+comparing_tsa %>% group_by(in_zone) %>%
+  summarise(average_value = mean(Temperature_Mean, na.rm=TRUE))
+```

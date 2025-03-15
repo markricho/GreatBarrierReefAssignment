@@ -1,6 +1,8 @@
 ---
 title: "Reef_Assignment"
-output: html_document
+output: 
+  html_document:
+    theme: journal
 date: "2025-03-11"
 author: "530618133"
 bibliography: citations.bib
@@ -17,62 +19,59 @@ library(ggmap)
 register_google(key = "AIzaSyAnwb9-OeK8El-HX0ZP19N437-G6chspAU", write = TRUE)
 ```
 
-```{r include=FALSE}
-bleachData <- read.csv("bleachingSurveys.csv")
-
-location <- "Australia"
-
-map <- get_googlemap(center = location, zoom = 4, maptype = "roadmap")
-```
-
-```{r}
-ggmap(map) +
-geom_point(data = bleachData, alpha = 0.2, aes(y=latitude, x= longitude, 
-  size=bleachCat, color=bleachCat)) + scale_colour_viridis(option = "C") + theme_minimal() + ggtitle("Bleaching severities across the East Coast of Australia")
-```
-
 ## Part One
 
-## Including Plots
+## Looking Into Yearly Data on Average Bleaching
 
-You can also embed plots, for example:
-
-```{r}
+```{r, include=FALSE}
 countryData <- read.csv("Reef_Check_with_cortad_variables_with_annual_rate_of_SST_change.csv")
 
 countryDataYears <- filter(countryData, Year >= 2014 & Year < 2018)
-
-world_map <- map_data("world")
-ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), fill="grey", alpha=0.3)+
-geom_point(data = countryDataYears, alpha = 0.2, aes(y=Latitude.Degrees, x= Longitude.Degrees,
-  size=Depth, color=Depth)) + scale_colour_viridis(option = "D") + theme_minimal()
 ```
 
-Clearly the Temperature was higher on average outside the Tropical Mid latitude than inside from 2014-2017. This is confusing though because you'd think it would be the other way round. I can use it as a template now though.
+```{r, echo=FALSE}
+library(gridExtra) # For arranging plots in a grid
+plots <- list()
+for (x in 2014:2017) {
+  countryDataYears <- filter(countryData, Year == x)
+  tsa_model <- countryDataYears[, c("Reef.Name", "Year", "Latitude.Degrees", "Longitude.Degrees","Average_bleaching")]
+  tsa_model <- tsa_model %>% distinct(Reef.Name, Year, Latitude.Degrees, Longitude.Degrees, Average_bleaching)
+  
+  tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
+  
+  tsa_model <- tsa_model %>% arrange(!(Average_bleaching <= 4.32))
+          
+  tsa_model$in_zone <- as.factor(tsa_model$in_zone)
+  
+  world_map <- map_data("world")
+  p <- ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), alpha=0.3)+
+  geom_point(data = tsa_model, alpha = 0.5, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+    color=Average_bleaching>4.32), size=4) +  geom_hline(yintercept = -15, color = "red", linetype = "dashed", linewidth = 1)+  geom_hline(yintercept = 15, color = "red", linetype = "dashed", linewidth = 1)+scale_colour_viridis_d(option = "D") + theme_minimal() +  theme(
+      panel.background = element_rect(color = "black"), plot.background = element_rect(fill = "lightblue4", color = NA)) + ggtitle(paste("Year:", x)) + labs(color = "Average", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
+  plots[[as.character(x)]] <- p
+}
 
-```{r}
-tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "Temperature_Mean")]
-tsa_model <- tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, Temperature_Mean)
-
-tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, 0, ifelse(abs(Latitude.Degrees)<15, 1, 2)))
-
+grid.arrange(grobs = plots, ncol = 2)
 ```
 
-```{r}
-world_map <- map_data("world")
-ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), fill="grey", alpha=0.3)+
-geom_point(data = tsa_model, alpha = 0.2, aes(y=Latitude.Degrees, x= Longitude.Degrees,
-  size=Temperature_Mean>301, color = in_zone)) + scale_colour_viridis_c() + theme_minimal()
-```
-Checking Averages
+```{r, echo=FALSE}
+countryDataYears <- filter(countryData, Year >=2014 & Year < 2018)
+tsa_model <- countryDataYears[, c("Reef.Name", "Year", "Latitude.Degrees", "Longitude.Degrees","Average_bleaching")]
 
-```{r}
-comparing_tsa <- tsa_model[, c("in_zone", "Temperature_Mean")]
-comparing_tsa %>% group_by(in_zone) %>%
-  summarise(average_value = mean(Temperature_Mean, na.rm=TRUE))
+tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
+
+tsa_model$in_zone <- as.factor(tsa_model$in_zone)
+  
+comparing_tsa <- tsa_model[, c("Year","in_zone", "Average_bleaching")]
+
+p <- comparing_tsa %>% group_by(Year, in_zone) %>%
+  summarise(average_value = mean(Average_bleaching, na.rm=TRUE), .groups = "drop")
+
+ggplot(p, aes(x=Year, y = average_value, color = in_zone)) + geom_line(linewidth = 3) + scale_colour_viridis_d() + ggtitle("Comparing Average Bleaching with Years and Zone")
 ```
 
-```{r, include=FALSE}
+# Part 2
+```{r, echo=FALSE}
 eReefs_nc = ncdf4::nc_open(
 "https://thredds.ereefs.aims.gov.au/thredds/dodsC/
 GBR4_H2p0_B3p1_Cq3b_Dhnd/annual.nc?zc[1],
