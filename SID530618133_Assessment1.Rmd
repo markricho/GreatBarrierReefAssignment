@@ -1,14 +1,15 @@
 ---
-title: "Reef_Assignment"
+title: "DATA3888 Reef Assignment"
 output: 
   html_document:
-    theme: journal
+    theme: cerulean
+    toc: yes
+    toc_float:
+      collapsed: true
 date: "2025-03-11"
 author: "530618133"
 bibliography: citations.bib
 ---
-
-# DATA3888 Assignment: Reef
 
 ```{r, include=FALSE}
 library(viridis)
@@ -25,9 +26,22 @@ library(caret)
 register_google(key = "AIzaSyAnwb9-OeK8El-HX0ZP19N437-G6chspAU", write = TRUE)
 ```
 
-## Part One
+![Turtle in Coral Reef Image (from Pixabay)](turtleInReef.jpg)
 
-## Looking Into Yearly Data on Average Bleaching
+# Outline
+For this project we will be looking into an unprecedented major coral bleaching event. One client has asked us to first assess a claim in regards to Tropical Mid-Lateral reefs having higher probabilities of Coral Bleaching in this time. Furthermore, a second client asked us to assess whether environmental variables measured four years prior are less, equal, or more useful than environmental variables measured at the same time to predict coral bleaching. This report analyses the claim through various maps and a line chart in Part One, and Random Forest classifications assess the second clients query.
+
+# Part One
+
+## Introduction
+
+Our client asked us to explore the claim that "Tropical Mid-Lateral Reefs have a higher probability of Coral Bleaching between 2014-2017 (time of the bleaching event)". We aim to do so with a plethora of visualizations, and if we believe this to be the case, we aim to explore why.
+
+## Evaluating the Claim
+
+### Maps for Yearly Exploration of Bleaching
+
+First we wanted to explore via maps whether each reef has above average coral bleaching occurring, with reference to whether they are in the tropical mid-latitude zone.
 
 ```{r, include=FALSE}
 countryData <- read.csv("Reef_Check_with_cortad_variables_with_annual_rate_of_SST_change.csv")
@@ -56,15 +70,23 @@ for (x in 2014:2017) {
   plots[[as.character(x)]] <- p
 }
 
-grid.arrange(grobs = plots, ncol = 2)
+grid.arrange(grobs = plots, ncol = 2, top = "Comparing Reefs' Average Bleaching")
 ```
+
+Midlatitude zones identified with red lines.
+
+As can be seen in the above maps, there are clear trends despite a year (2015) where there was higher bleaching on average for outside the mid-latitude zone, it appeared there was consistently a greater average bleaching per year for reefs in the mid-latitude zones compared to in-between zones (15-20 above or below the equator) and outside mid-latitude zones. 
+
+### Simple Line Chart showing Average Bleaching in Zones by Year
+
+Despite maps above suggesting above more likely average bleaching in mid-latitude zones in 2014, 2016, 2017, we felt a line chart would further add to the story in demonstrating our suspicions. 
 
 ```{r, echo=FALSE}
 countryDataYears <- filter(countryData, Year > 2013)
 
 tsa_model <- countryDataYears[, c("Reef.Name", "Year", "Latitude.Degrees", "Longitude.Degrees","Average_bleaching")]
 
-tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
+tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20, "Inside Midlatitude Zone", "Outside Midlatitude Zone"))
 
 tsa_model$in_zone <- as.factor(tsa_model$in_zone)
   
@@ -76,9 +98,46 @@ p <- comparing_tsa %>% group_by(Year, in_zone) %>%
 ggplot(p, aes(x=Year, y = average_value, color = in_zone)) + geom_line(linewidth = 3) + scale_colour_viridis_d(option = "D") + ggtitle("Comparing Average Bleaching with Years and Zone")
 ```
 
-## But why?
+Higher averages of bleaching for mid-latitude reefs are made clear here apart from 2015. 
 
-## Temperature Part
+In 2014 it seems there was a high average of coral bleaching across Reefs in the Tropical Midlatitude zone, compared to the other zones. We felt this was due to a minor El Nino event in the Pacfic Ocean as claimed by PMEL.NOAA.GOV that only lasted between 2014-15.
+
+Explanation of damage in 2016
+
+Explanation of damage in 2017
+
+### Mean Thermal Stress Anomalies Exploration
+Furthermore I wanted to explore dadada
+
+```{r, echo=FALSE}
+tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "TSA_Mean")]
+tsa_model <- tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, TSA_Mean)
+
+tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
+```
+
+```{r, echo=FALSE}
+tsa_model$Above_301 <- tsa_model$TSA_Mean > -1.73
+tsa_model$in_zone <- as.factor(tsa_model$in_zone)
+
+world_map <- map_data("world")
+ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), alpha=0.3)+
+geom_point(data = tsa_model, alpha = 0.4, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+  shape=Above_301, color = in_zone), size=4) + scale_colour_viridis_d(option = "D") + theme_minimal() +  theme(
+    panel.background = element_rect(color = "black"), plot.background = element_rect(color = NA)
+  ) + ggtitle("Map displaying Coral Reefs Checking above average Thermal Stress Anomalies") + labs(color = "In Midlatititude Zone", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
+```
+What this means:
+
+### Conlusion
+We think the claim is valid dadada
+
+## Analysing Factors
+But I wanted to explore why this was the case. After some data exploration, it appeared temperature seemed to play a significant role in the coral bleaching. As seen in the below map, there was clearly a temperature difference between mid-latitude and in between zones, and outside mid-latitude zones. More details below.
+
+### Mean Temperature Exploration
+dadada
+
 ```{r, echo=FALSE}
 tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "Temperature_Mean")]
 tsa_model <- tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, Temperature_Mean)
@@ -98,7 +157,15 @@ geom_point(data = tsa_model, alpha = 0.4, aes(y=Latitude.Degrees, x= Longitude.D
   ) + ggtitle("Map displaying Mean Temperature of Coral Reefs analysed from study") + labs(color = "In Midlatititude Zone", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
 ```
 
+This above map shows dadada
+
 # Part 2
+
+## Introduction
+dadada
+
+## Visualisations for Current Year Data
+dadada
 ```{r, echo=FALSE}
 world = map_data("world")
 library(RNetCDF)
@@ -159,7 +226,8 @@ joined_prior <- joined_sf %>% filter(
 )
 ```
 
-```{r}
+```{r, echo=FALSE}
+set.seed(3888)
 # Randomly split the data into training (70%) and testing (30%) sets
 train_index <- caret::createDataPartition(joined_contemporary$bleachCat, p = 0.7, list = FALSE)
 train_data <- joined_contemporary[train_index, ]
@@ -170,7 +238,8 @@ train_data$bleachCat <- as.factor(train_data$bleachCat)
 rf_model <- randomForest(bleachCat ~ temp + salt + total_n + ma_n + ph, data = train_data)
 ```
 
-```{r}
+```{r, echo=FALSE}
+set.seed(3888)
 # Make predictions on testing data
 predictions <- predict(rf_model, newdata = test_data)
 # Convert both to factors
@@ -182,10 +251,12 @@ predictions <- factor(predictions, levels = levels(test_data$bleachCat))
 
 # Generate confusion matrix
 cm <- confusionMatrix(predictions, test_data$bleachCat)
-print(cm)
-```
+``` 
 
-```{r}
+## Predicted Data
+dadada
+```{r, echo=FALSE}
+set.seed(3888)
 test_data$predicted <- predictions
 test_data <- st_as_sf(test_data)
 
@@ -194,7 +265,11 @@ ggplot(data = test_data) + geom_sf(aes(fill = predicted), shape = 21, size = 3, 
     theme_classic() + scale_fill_brewer(palette = "Blues") + labs(fill = "Predicted Bleaching Category",
     x = "Longitude", y = "Latitude")
 ```
-
+### Confusion Matrix and Accuracy
+dadada
+```{r}
+print(cm)
+```
 ```{r}
 # Create a new column indicating if prediction is correct or not
 test_data$agreement <- ifelse(test_data$bleachCat == test_data$predicted, "Correct",
@@ -207,8 +282,10 @@ ggplot(test_data) + geom_sf(aes(fill = agreement), shape = 21, size = 3, color =
     x = "Lontitude", y = "Latitude") + theme_classic()
 ```
 
-```{r}
-set.seed(2025)
+## Visualisations for Current Year Data
+dadada
+```{r, echo=FALSE}
+set.seed(3888)
 
 # Randomly split the data into training (70%) and testing (30%) sets
 train_index <- caret::createDataPartition(joined_prior$bleachCat, p = 0.7, list = FALSE)
@@ -220,7 +297,8 @@ train_data$bleachCat <- as.factor(train_data$bleachCat)
 rf_model <- randomForest(bleachCat ~ temp + salt + total_n + ma_n + ph, data = train_data)
 ```
 
-```{r}
+```{r, echo=FALSE}
+set.seed(3888)
 # Make predictions on testing data
 predictions <- predict(rf_model, newdata = test_data)
 
@@ -233,10 +311,11 @@ predictions <- factor(predictions, levels = levels(test_data$bleachCat))
 
 # Generate confusion matrix
 cm <- confusionMatrix(predictions, test_data$bleachCat)
-print(cm)
 ```
 
-```{r}
+### Predicted Data
+dadada
+```{r, echo=FALSE}
 test_data$predicted <- predictions
 test_data <- st_as_sf(test_data)
 
@@ -245,8 +324,13 @@ ggplot(data = test_data) + geom_sf(aes(fill = predicted), shape = 21, size = 3, 
     theme_classic() + scale_fill_brewer(palette = "Blues") + labs(fill = "Predicted Bleaching Category",
     x = "Longitude", y = "Latitude")
 ```
-
+### Confusion Matrix and Accuracy Diagram
+dadada
 ```{r}
+print(cm)
+```
+
+```{r, echo=FALSE}
 # Create a new column indicating if prediction is correct or not
 test_data$agreement <- ifelse(test_data$bleachCat == test_data$predicted, "Correct",
     "Incorrect")
@@ -257,3 +341,9 @@ ggplot(test_data) + geom_sf(aes(fill = agreement), shape = 21, size = 3, color =
     scale_fill_manual(values = c(Correct = "green", Incorrect = "red")) + labs(fill = "Predicted Outcome",
     x = "Lontitude", y = "Latitude") + theme_classic()
 ```
+
+## Conclusion
+dadada
+
+# Summary
+dadada
