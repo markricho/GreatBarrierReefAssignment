@@ -28,7 +28,6 @@ tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.De
 tsa_model <- tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, Temperature_Mean)
 
 tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
-
 ```
 
 ```{r, echo=FALSE}

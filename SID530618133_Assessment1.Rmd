@@ -15,6 +15,12 @@ library(viridis)
 library(tidyverse)
 library(ncdf4)
 library(ggmap)
+library(gridExtra)
+library(tidyverse)
+library(class)
+library(cvTools)
+library(randomForest)
+library(caret)
 
 register_google(key = "AIzaSyAnwb9-OeK8El-HX0ZP19N437-G6chspAU", write = TRUE)
 ```
@@ -30,7 +36,6 @@ countryDataYears <- filter(countryData, Year >= 2014 & Year < 2018)
 ```
 
 ```{r, echo=FALSE}
-library(gridExtra) # For arranging plots in a grid
 plots <- list()
 for (x in 2014:2017) {
   countryDataYears <- filter(countryData, Year == x)
@@ -47,7 +52,7 @@ for (x in 2014:2017) {
   p <- ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), alpha=0.3)+
   geom_point(data = tsa_model, alpha = 0.5, aes(y=Latitude.Degrees, x= Longitude.Degrees,
     color=Average_bleaching>4.32), size=4) +  geom_hline(yintercept = -15, color = "red", linetype = "dashed", linewidth = 1)+  geom_hline(yintercept = 15, color = "red", linetype = "dashed", linewidth = 1)+scale_colour_viridis_d(option = "D") + theme_minimal() +  theme(
-      panel.background = element_rect(color = "black"), plot.background = element_rect(fill = "lightblue4", color = NA)) + ggtitle(paste("Year:", x)) + labs(color = "Average", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
+      panel.background = element_rect(color = "black"), plot.background = element_rect( color = NA)) + ggtitle(paste("Year:", x)) + labs(color = "Average", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
   plots[[as.character(x)]] <- p
 }
 
@@ -55,7 +60,8 @@ grid.arrange(grobs = plots, ncol = 2)
 ```
 
 ```{r, echo=FALSE}
-countryDataYears <- filter(countryData, Year >=2014 & Year < 2018)
+countryDataYears <- filter(countryData, Year > 2013)
+
 tsa_model <- countryDataYears[, c("Reef.Name", "Year", "Latitude.Degrees", "Longitude.Degrees","Average_bleaching")]
 
 tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
@@ -67,12 +73,39 @@ comparing_tsa <- tsa_model[, c("Year","in_zone", "Average_bleaching")]
 p <- comparing_tsa %>% group_by(Year, in_zone) %>%
   summarise(average_value = mean(Average_bleaching, na.rm=TRUE), .groups = "drop")
 
-ggplot(p, aes(x=Year, y = average_value, color = in_zone)) + geom_line(linewidth = 3) + scale_colour_viridis_d() + ggtitle("Comparing Average Bleaching with Years and Zone")
+ggplot(p, aes(x=Year, y = average_value, color = in_zone)) + geom_line(linewidth = 3) + scale_colour_viridis_d(option = "D") + ggtitle("Comparing Average Bleaching with Years and Zone")
+```
+
+## But why?
+
+## Temperature Part
+```{r, echo=FALSE}
+tsa_model <- countryDataYears[, c("Reef.Name", "Latitude.Degrees", "Longitude.Degrees", "Temperature_Mean")]
+tsa_model <- tsa_model %>% distinct(Reef.Name, Latitude.Degrees, Longitude.Degrees, Temperature_Mean)
+
+tsa_model <- transform(tsa_model, in_zone = ifelse(abs(Latitude.Degrees)<20 & abs(Latitude.Degrees)>15, "Inbetween", ifelse(abs(Latitude.Degrees)<15, "Inside Midlatitude Zone", "Outside Midlatitude Zone")))
+```
+
+```{r, echo=FALSE}
+tsa_model$Above_301 <- tsa_model$Temperature_Mean > 301
+tsa_model$in_zone <- as.factor(tsa_model$in_zone)
+
+world_map <- map_data("world")
+ggplot()+geom_polygon(data =world_map, aes(x=long, y = lat, group = group), alpha=0.3)+
+geom_point(data = tsa_model, alpha = 0.4, aes(y=Latitude.Degrees, x= Longitude.Degrees,
+  shape=Above_301, color = in_zone), size=4) + scale_colour_viridis_d(option = "D") + theme_minimal() +  theme(
+    panel.background = element_rect(color = "black"), plot.background = element_rect(color = NA)
+  ) + ggtitle("Map displaying Mean Temperature of Coral Reefs analysed from study") + labs(color = "In Midlatititude Zone", shape = "Reef Above Mean") + xlab("Longitude") + ylab("Latitude")
 ```
 
 # Part 2
 ```{r, echo=FALSE}
-eReefs_nc = ncdf4::nc_open(
+world = map_data("world")
+library(RNetCDF)
+library(sf)
+library(lubridate)
+
+eReefs_nc = nc_open(
 "https://thredds.ereefs.aims.gov.au/thredds/dodsC/
 GBR4_H2p0_B3p1_Cq3b_Dhnd/annual.nc?zc[1],
 latitude[0:1:722],longitude[0:1:490],
@@ -83,11 +116,144 @@ PH[0:1:9][1][0:1:722][0:1:490],
 salt[0:1:9][1][0:1:722][0:1:490],
 time[0:1:9]")
 
-# Access latitude and longitude
-latitude <- ncvar_get(eReefs_nc, "latitude")
-longitude <- ncvar_get(eReefs_nc, "longitude")
+# Longitude and Latitude
+lat = ncdf4::ncvar_get(eReefs_nc, "latitude")
+long = ncdf4::ncvar_get(eReefs_nc, "longitude")
 
-# View the first few values of latitude and longitude
-head(latitude)
-head(longitude)
+# Time
+time = ncdf4::ncvar_get(eReefs_nc, "time")
+tunits = ncdf4::ncatt_get(eReefs_nc, "time", "units")
+cf = CFtime::CFtime(tunits$value, calendar = "standard", time)
+timestamps = CFtime::as_timestamp(cf) 
+timestamps = as.Date(timestamps, format = "%Y-%m-%d") 
+
+# Explanatory variables
+temp = ncdf4::ncvar_get(eReefs_nc, "temp")
+salt = ncdf4::ncvar_get(eReefs_nc, "salt")
+total_n = ncdf4::ncvar_get(eReefs_nc, "TOTAL_NITROGEN")
+ma_n = ncdf4::ncvar_get(eReefs_nc, "MA_N")
+ph = ncdf4::ncvar_get(eReefs_nc, "PH")
+
+# Convert data to data.frame
+eReefs_df = expand.grid(long = long, lat = lat, time = timestamps) %>%
+    mutate(temp = as.vector(temp), salt = as.vector(salt), total_n = as.vector(total_n), ma_n = as.vector(ma_n), ph = as.vector(ph))
+
+# filter out when temp or salt is NaN
+eReefs_noNan = eReefs_df |>
+    filter(!is.nan(temp), !is.nan(salt))
+
+bleachingData <- read.csv("bleachingSurveys.csv")
+bleaching_sf = st_as_sf(bleachingData, coords = c("longitude", "latitude"), crs = 4326)
+
+eReefs_sf = st_as_sf(eReefs_noNan, coords = c("long", "lat"), crs = 4326)
+
+joined_sf = st_join(bleaching_sf, eReefs_sf, join = st_is_within_distance, dist = 1000,
+    left = TRUE)
+
+joined_contemporary <- joined_sf %>% filter(year(surveyDate) == year(time))
+
+joined_prior <- joined_sf %>% filter(
+  (year(time) == 2011 & year(surveyDate) == 2015) |
+  (year(time) == 2012 & year(surveyDate) == 2016) |
+  (year(time) == 2013 & year(surveyDate) == 2017)
+)
+```
+
+```{r}
+# Randomly split the data into training (70%) and testing (30%) sets
+train_index <- caret::createDataPartition(joined_contemporary$bleachCat, p = 0.7, list = FALSE)
+train_data <- joined_contemporary[train_index, ]
+test_data <- joined_contemporary[-train_index, ]
+train_data$bleachCat <- as.factor(train_data$bleachCat)
+
+# Fit a random forest model to training data
+rf_model <- randomForest(bleachCat ~ temp + salt + total_n + ma_n + ph, data = train_data)
+```
+
+```{r}
+# Make predictions on testing data
+predictions <- predict(rf_model, newdata = test_data)
+# Convert both to factors
+test_data$bleachCat <- as.factor(test_data$bleachCat)
+predictions <- as.factor(predictions)
+
+# Ensure levels match
+predictions <- factor(predictions, levels = levels(test_data$bleachCat))
+
+# Generate confusion matrix
+cm <- confusionMatrix(predictions, test_data$bleachCat)
+print(cm)
+```
+
+```{r}
+test_data$predicted <- predictions
+test_data <- st_as_sf(test_data)
+
+# Predicted bleaching map
+ggplot(data = test_data) + geom_sf(aes(fill = predicted), shape = 21, size = 3, color = "black") +
+    theme_classic() + scale_fill_brewer(palette = "Blues") + labs(fill = "Predicted Bleaching Category",
+    x = "Longitude", y = "Latitude")
+```
+
+```{r}
+# Create a new column indicating if prediction is correct or not
+test_data$agreement <- ifelse(test_data$bleachCat == test_data$predicted, "Correct",
+    "Incorrect")
+test_data$agreement <- factor(test_data$agreement, levels = c("Correct", "Incorrect"))
+
+# Predicted vs observed outcomes on the map
+ggplot(test_data) + geom_sf(aes(fill = agreement), shape = 21, size = 3, color = "black") +
+    scale_fill_manual(values = c(Correct = "green", Incorrect = "red")) + labs(fill = "Predicted Outcome",
+    x = "Lontitude", y = "Latitude") + theme_classic()
+```
+
+```{r}
+set.seed(2025)
+
+# Randomly split the data into training (70%) and testing (30%) sets
+train_index <- caret::createDataPartition(joined_prior$bleachCat, p = 0.7, list = FALSE)
+train_data <- joined_prior[train_index, ]
+test_data <- joined_prior[-train_index, ]
+train_data$bleachCat <- as.factor(train_data$bleachCat)
+
+# Fit a random forest model to training data
+rf_model <- randomForest(bleachCat ~ temp + salt + total_n + ma_n + ph, data = train_data)
+```
+
+```{r}
+# Make predictions on testing data
+predictions <- predict(rf_model, newdata = test_data)
+
+# Convert both to factors
+test_data$bleachCat <- as.factor(test_data$bleachCat)
+predictions <- as.factor(predictions)
+
+# Ensure levels match
+predictions <- factor(predictions, levels = levels(test_data$bleachCat))
+
+# Generate confusion matrix
+cm <- confusionMatrix(predictions, test_data$bleachCat)
+print(cm)
+```
+
+```{r}
+test_data$predicted <- predictions
+test_data <- st_as_sf(test_data)
+
+# Predicted bleaching map
+ggplot(data = test_data) + geom_sf(aes(fill = predicted), shape = 21, size = 3, color = "black") +
+    theme_classic() + scale_fill_brewer(palette = "Blues") + labs(fill = "Predicted Bleaching Category",
+    x = "Longitude", y = "Latitude")
+```
+
+```{r}
+# Create a new column indicating if prediction is correct or not
+test_data$agreement <- ifelse(test_data$bleachCat == test_data$predicted, "Correct",
+    "Incorrect")
+test_data$agreement <- factor(test_data$agreement, levels = c("Correct", "Incorrect"))
+
+# Predicted vs observed outcomes on the map
+ggplot(test_data) + geom_sf(aes(fill = agreement), shape = 21, size = 3, color = "black") +
+    scale_fill_manual(values = c(Correct = "green", Incorrect = "red")) + labs(fill = "Predicted Outcome",
+    x = "Lontitude", y = "Latitude") + theme_classic()
 ```
