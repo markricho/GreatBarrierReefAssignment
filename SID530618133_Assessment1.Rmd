@@ -95,14 +95,13 @@ ggplot(reefCortadDataYears, aes(x = as.factor(Year), y = Temperature_Mean)) +
 ggplot(reefCortadDataYears, aes(x = as.factor(Year), y = TSA_Mean)) + 
   geom_boxplot()
 ```
+
 We wanted to check for association between two variables for potential future usage, and found some weak-moderate association. It did appear that a temperature increase did show signs of a tsa increase as inferenced with a linear model.
+
 ```{r}
 # This chunk is used to model temperature mean vs tsa mean
 ggplot(reefCortadDataYears, aes(x = Temperature_Mean, y = TSA_Mean)) + geom_point() + geom_smooth(method="lm")
 ```
-
-### Conclusion for Part One Analysis and Cleaning
-After exploring some of the data cleaning, wrangling, and exploratory data analysis for part one we were able to analyse certain variables that will be of use for dissecting client one's claim.
 
 ## Part Two Data Cleaning and Analysis
 
@@ -180,23 +179,30 @@ joined_past <- st_drop_geometry(joined_past)
 ```
 
 I wanted to ensure there is enough of a representation of each category in the bleaching count as this will be the variable the four-years-behind and contemporary model will try to predict, and there was.
+
 ```{r}
 # Produces histogram to visualise bleachCat variable
 ggplot() + geom_histogram(data = bleachingData, aes(bleachCat), bins = 20)
 ```
+
 I wanted to explore some of the variables in the eReefs data-set. We found that the ph variable has minimal representation in the first year of both the past joined and simultaneous data-sets. Due to this occurring in both data-sets roughly equally this isn't a concern and no action is needed.
+
 ```{r}
 # Produces boxplots to visualise effect of ph over time
 ggplot() + geom_boxplot(data = joined_past, aes(x = as.factor(time), y = ph))
 ggplot() + geom_boxplot(data = joined_simultaneous, aes(x = as.factor(time), y = ph))
 ```
+
 There didn't appear to be any significant outliers in other data-set for salt. 
+
 ```{r}
 # Produces boxplots to visualise effect of salt over time
 ggplot() + geom_boxplot(data = joined_past, aes(x = salt))
 ggplot() + geom_boxplot(data = joined_simultaneous, aes(x = salt))
 ```
+
 Although extremely small values, there are no need for adjustments here for the ma_n variable as the model we use will likely account for these  variables with multipliers.
+
 ```{r}
 # Produces boxplots to visualise effect of ma_n over time
 ggplot() + geom_boxplot(data = joined_past, aes(x = ma_n))
@@ -218,6 +224,9 @@ ggplot() + geom_boxplot(data = joined_past, aes(x = total_n, y=as.factor(bleachC
 ggplot() + geom_boxplot(data = joined_past, aes(x = ph, y=as.factor(bleachCat)))
 ggplot() + geom_boxplot(data = joined_past, aes(x = temp, y=as.factor(bleachCat)))
 ```
+
+### Conclusion for Exploratory Data Analysis and Cleaning
+After exploring some of the data cleaning, wrangling, and exploratory data analysis for part one we were able to analyse certain variables that will be of use for dissecting client one's claim. They have given us a plethora of ideas to answer the two parts sufficiently.
 
 # Part One
 Our client asked us to explore the claim that "Tropical Mid-Lateral Reefs have a higher probability of Coral Bleaching between 2014-2017 (time of El Niño)", so now we will proceed with data analysis to evaluate this claim. 
@@ -354,7 +363,7 @@ We think the claim is valid as there were clear signs of the Tropical Mid-Latitu
 ## Evaluation and Improvements on Part One:
 While we felt this part was success in that we gathered strong evidence of the clients claim we also made efficient use of resources, and time. In particular our map visualisations were extremely useful at presenting the data, and geom_polygon and ggplot complemented with effective plots. We felt the viridis package played a huge part in readability. And overall time was managed particularly well in this process.
 
-In future endeavors to improve we would 
+### In future endeavors to improve we would 
 * Give more time to analyse the data set even if certain variables aren't directly correlated in order to better understand the domain or give us better ideas on how to make meaningful visualizations and produce even stronger evidence for our client.
 * Try to make use of more than two types of graphs for our visualizations if we are going to produce a few different visualizations. It is easy to take a practical approach to this process where the graphs working well can be duplicated for other variables but a plethora of types of graphs may allow us to expand our lens and see data or information in different ways.
 * Not overdo the amount of visualizations we produce for the client. The client only asked for a map visualization but we exceeded this amount to produce stronger evidence of their claim. However next time, it would be more suitable to request to the client whether it is allowed to go over the required amount so that we produce only exactly what they require.
@@ -382,7 +391,12 @@ As seen in the above line chart on Reef Diversity between 2014-2017 we wanted to
 # Part Two
 
 ## Introduction
-In this section we will use Random Forest modelling to try to produce accurate models using a eReefs dataset to predict bleaching categories in the bleach surveys data sets. This will be done for four years behind variables to bleach category information, and same time variables to bleach category information.
+In this section we decided to use Random Forest modelling to try to produce accurate models using a eReefs dataset to predict bleaching categories in the bleach surveys data sets. This will be done for four years behind variables to bleach category information, and same time variables to bleach category information.
+
+### Justification of Choices regarding model
+After evaluating the choice of various data prediction models, we felt Random Forests were the most suitable machine learning method due to their versatility, ease of use for implementation, general accuracy as seen in tutorial one compared to other methods, and clarity. We see clarity as there is a clear, comparitive parameter, accuracy, that will clearly be able to suggest which model is better able to predict the bleach categories in the Great Barrier, improving simplicity. 
+
+Potential limitations of Random Forests is potential memory storage, and increased time compared to other methods. Potential limitations of this overall method to justify the model will be a rather anal approach, more models would improve certainty of justifying the claim for the client. Furthermore, we will only compare the models with the variables provided. However, with the ability to remove / add variables as needed we could improve accuracy, so this is a limitation in our analysis, but this process is not needed given the clients requirements. We will be visualising the data via confusion matrices, however they may be seen as limiting and redundant especially if the two data sets end up being very similar as they wouldn't show particularly meaningful information.
 
 ## Exploratory Data Analysis
 
@@ -427,7 +441,7 @@ ggplot(plt, aes(Prediction,Reference, fill= Freq)) +
 round(cm$overall[1], 2)
 ```
 
-### Verdict 
+### Outcome 
 While this model's accuracy (0.46) may seem relatively weak, considering it has to choose five different categories for the response variable of bleachCat it is far better than random chance and the machine learning at play here is able to pick up some patterns in the data. Thus we would say it is in between a weak and moderate in terms of it's strength and could be useful to our client with some refinement to the model, i.e, changing the number of trees, adjust variables based on significance to data. However as the client just wanted me to compare contemporary and prior joined data we will not go through these additional steps.
 
 ## Four Years Prior Data used to Predict Bleach Category
@@ -471,7 +485,7 @@ ggplot(plt, aes(Prediction,Reference, fill= Freq)) +
 round(cm$overall[1], 2)
 ```
 
-### Verdict
+### Outcome
 Like the prior model, this model is far better than random chance and the machine learning at play here is able to pick up some basic patterns in the data, with an accuracy of 0.48 (rounded to 2dp). In fact it is slightly stronger than the first model with a slighter greater accuracy. Again we would say it is in between a weak and moderate in terms of it's strength and could again be useful to our client with refinements steps as above. However as the client just wanted me to compare contemporary and prior joined data we will not go through these additional steps.
 
 ## Conclusion of Part Two
@@ -480,7 +494,7 @@ While both models weren't particularly strong and most likely wouldn't be of use
 ## Evaluation and Improvements on Part Two
 Again we felt this part was success in that we gathered the required evidence of up-to-date data being more useful. We also made efficient use of resources, and time. In particular the resource [@StackOverflow] greatly helped in providing an aesthetic confusion matrix basis which greatly improved the aesthetic requirement. We felt that Random Forest was a fit-for-purpose Machine Learning technique for the clients requirement. 
 
-In future endeavors to improve we would
+### In future endeavors to improve we would
 * Read the requirements carefully. We made mistakes in the process as we accidentally used the wrong data set required for this process assuming the first one was needed which cost us a lot of time.
 * Check code carefully and don't hesitate to think outside the box. There was a simple error in the code that took many hours to fix. If code were checked, even in the most obvious setting, the error would've been fixed so much earlier.
 * If given more time we would try to add more visualizations to compare the past and presently joined data-sets as this would improve clarity for clients, however it is more on the extraneous side of improvements here.
